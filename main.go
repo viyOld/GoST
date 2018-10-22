@@ -1,95 +1,136 @@
-// GoST  is Go Smart Testing
-// To terminate the daemon use: kill `cat GoST`
+// Example of a daemon with echo service
 package main
 
 import (
-	"flag"
 	"fmt"
-	"html"
 	"log"
-	"net/http"
+	"net"
 	"os"
+	"os/signal"
 	"syscall"
 
-	"github.com/sevlyar/go-daemon"
+	"github.com/takama/daemon"
 )
 
-var (
-	signal = flag.String("s", "", `send signal to the daemon
-		quit — graceful shutdown
-		stop — fast shutdown
-		reload — reloading the configuration file`)
+const (
+
+	// name of the service
+	name        = "myservice"
+	description = "My GoST Service"
+
+	// port which daemon should be listen
+	port = ":9977"
 )
+
+// dependencies that are NOT required by the service, but might be used
+var dependencies = []string{"dummy.service"}
+
+var stdlog, errlog *log.Logger
+
+// Service has embedded daemon
+type Service struct {
+	daemon.Daemon
+}
+
+// Manage by daemon commands or run the daemon
+func (service *Service) Manage() (string, error) {
+
+	usage := "Usage: myservice install | remove | start | stop | status"
+
+	// if received any kind of command, do it
+	if len(os.Args) > 1 {
+		command := os.Args[1]
+		switch command {
+		case "install":
+			return service.Install()
+		case "remove":
+			return service.Remove()
+		case "start":
+			return service.Start()
+		case "stop":
+			return service.Stop()
+		case "status":
+			return service.Status()
+		default:
+			return usage, nil
+		}
+	}
+
+	// Do something, call your goroutines, etc
+
+	// Set up channel on which to send signal notifications.
+	// We must use a buffered channel or risk missing the signal
+	// if we're not ready to receive when the signal is sent.
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt, os.Kill, syscall.SIGTERM)
+
+	// Set up listener for defined host and port
+	listener, err := net.Listen("tcp", port)
+	if err != nil {
+		return "Possibly was a problem with the port binding", err
+	}
+
+	// set up channel on which to send accepted connections
+	listen := make(chan net.Conn, 100)
+	go acceptConnection(listener, listen)
+
+	// loop work cycle with accept connections or interrupt
+	// by system signal
+	for {
+		select {
+		case conn := <-listen:
+			go handleClient(conn)
+		case killSignal := <-interrupt:
+			stdlog.Println("Got signal:", killSignal)
+			stdlog.Println("Stoping listening on ", listener.Addr())
+			listener.Close()
+			if killSignal == os.Interrupt {
+				return "Daemon was interrupted by system signal", nil
+			}
+			return "Daemon was killed", nil
+		}
+	}
+}
+
+// Accept a client connection and collect it in a channel
+func acceptConnection(listener net.Listener, listen chan<- net.Conn) {
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			continue
+		}
+		listen <- conn
+	}
+}
+
+func handleClient(client net.Conn) {
+	for {
+		buf := make([]byte, 4096)
+		numbytes, err := client.Read(buf)
+		if numbytes == 0 || err != nil {
+			return
+		}
+		client.Write(buf[:numbytes])
+	}
+}
+
+func init() {
+	stdlog = log.New(os.Stdout, "", 0)
+	errlog = log.New(os.Stderr, "", 0)
+}
 
 func main() {
-
-	flag.Parse()
-	daemon.AddCommand(daemon.StringFlag(signal, "quit"), syscall.SIGQUIT, termHandler)
-	daemon.AddCommand(daemon.StringFlag(signal, "stop"), syscall.SIGTERM, termHandler)
-	daemon.AddCommand(daemon.StringFlag(signal, "reload"), syscall.SIGHUP, reloadHandler)
-
-	cntxt := &daemon.Context{
-		PidFileName: "GoST",
-		PidFilePerm: 0644,
-		LogFileName: "./log/log",
-		LogFilePerm: 0640,
-		WorkDir:     "./",
-		Umask:       027,
-		Args:        []string{"[go-daemon GoST]"},
-	}
-
-	if len(daemon.ActiveFlags()) > 0 {
-		d, err := cntxt.Search()
-		if err != nil {
-			log.Fatalln("Unable send signal to the daemon:", err)
-		}
-		daemon.SendCommands(d)
-		return
-	}
-
-	d, err := cntxt.Reborn()
+	srv, err := daemon.New(name, description, dependencies...)
 	if err != nil {
-		log.Fatal("Unable to run: ", err)
+		errlog.Println("Error: ", err)
+		os.Exit(1)
 	}
-	if d != nil {
-		return
-	}
-	defer cntxt.Release()
-
-	log.Print("- - - - - - - - - - - - - - -")
-	log.Print("daemon GoST started")
-	log.Print("- - - - - - - - - - - - - - -")
-
-	serveHTTP()
-
-	err = daemon.ServeSignals()
+	service := &Service{srv}
+	status, err := service.Manage()
 	if err != nil {
-		log.Println("Error:", err)
+		errlog.Println(status, "\nError: ", err)
+		os.Exit(1)
 	}
-	log.Println("daemon terminated")
-}
+	fmt.Println(status)
 
-func serveHTTP() {
-	http.HandleFunc("/", httpHandler)
-	http.ListenAndServe("127.0.0.1:8080", nil)
-}
-
-func httpHandler(w http.ResponseWriter, r *http.Request) {
-	log.Printf("request from %s: %s %q", r.RemoteAddr, r.Method, r.URL)
-	fmt.Fprintf(w, "go-daemon: %q", html.EscapeString(r.URL.Path))
-}
-
-func termHandler(sig os.Signal) error {
-	log.Println("terminating...")
-	// stop <- struct{}{}
-	// if sig == syscall.SIGQUIT {
-	// 	<-done
-	// }
-	// return daemon.ErrStop
-	return nil
-}
-
-func reloadHandler(sig os.Signal) error {
-	log.Println("configuration reloaded")
-	return nil
 }
