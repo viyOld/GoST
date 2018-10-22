@@ -1,3 +1,5 @@
 17 жовтня - початок проекту
 http://ukrfonts.com
 https://github.com/sevlyar/go-daemon/
+https://github.com/takama/daemon
+nohup ./myexecutable &
