@@ -14,6 +14,13 @@ type configa struct {
 		Host string `yaml:"host"`
 		Port string `yaml:"port"`
 	} `yaml:"httpserver"`
+	Database struct {
+		Host     string `yaml:"host"`
+		Port     string `yaml:"port"`
+		User     string `yaml:"user"`
+		Password string `yaml:"password"`
+		DBname   string `yaml:"dbname"`
+	} `yaml:"database"`
 }
 
 //Conf is configuration
@@ -39,9 +46,15 @@ func (c *configa) getConf() *configa {
 		fmt.Printf("File configuration is not exist. Create configugation with default date.\n")
 		c.HTTPserver.Host = "127.0.0.1"
 		c.HTTPserver.Port = "80"
+		c.Database.Host = "127.0.0.1"
+		c.Database.Port = "5432"
+		c.Database.User = "postgres"
+		c.Database.Password = "12345"
+		c.Database.DBname = "gost"
+
 		return c
 	}
-	// если файл есть считіваем его
+	// если файл есть считываем его
 	yamlFile, err := ioutil.ReadFile("./config/conf.yaml")
 	if err != nil {
 		log.Printf("yamlFile.Get err   #%v ", err)

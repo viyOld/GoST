@@ -2,26 +2,46 @@ package routers
 
 import (
 	"fmt"
+	"net/http"
 
+	"../../src/handlers"
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 )
 
+var R chi.Router
+
 func init() {
-	fmt.Println("Start Init func: ")
+	fmt.Println("Start Init Route: ")
+	R = chi.NewRouter()
+
+	R.Use(middleware.RequestID)
+	R.Use(middleware.RealIP)
+
+	R.Get("/", handlers.StartPage)
+	R.Get("/start", handlers.StartPage)
+	R.Handle("/assets/images/*", http.StripPrefix("/assets/images/", http.FileServer(http.Dir("./assets/images/"))))
+	R.Handle("/assets/css/*", http.StripPrefix("/assets/css/", http.FileServer(http.Dir("./assets/css/"))))
+	R.Handle("/assets/js/*", http.StripPrefix("/assets/js/", http.FileServer(http.Dir("./assets/js/"))))
 }
 
 func main() {
 	fmt.Println("Main config run: ")
 	// Routing
-	R := chi.NewRouter()
+	// R = chi.NewRouter()
 
-	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
+	// R.Use(middleware.RequestID)
+	// R.Use(middleware.RealIP)
+
+	// R.Get("/", handlers.StartPage)
+	// R.Get("/start", handlers.StartPage)
 
 }
 
-// r.Get("/", ha.StartPage)
+func Status() {
+	fmt.Println("Status OK: ")
+}
+
 // //r.Get("/favicon.ico", ha.FaviconHandler)
 // r.Get("/auth/login", ha.GetLogin)
 // r.Post("/auth/login", ha.PostLogin)

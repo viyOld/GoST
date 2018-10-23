@@ -1,29 +1,31 @@
 package main
 
 import (
-	"fmt"
+	//"log"
+	"net/http"
+
+	log "github.com/sirupsen/logrus"
 
 	cnf "./src/config"
 	rts "./src/routers"
-	//"log"
-	//"net/http"
 )
 
 func init() {
-	fmt.Println("Start Init func: ")
+	log.Println("Start Init func: ")
 }
 
 func main() {
-	fmt.Println("Start Main func: ")
+	log.Println("Start Main func: ")
+	defer cnf.Conf.PutConf()
 	// fmt.Println(cnf.Conf.HTTPserver.Host)
 	// fmt.Println(cnf.Conf.HTTPserver.Port)
-	defer cnf.Conf.PutConf()
-	rts.R.info
 
-	// err = http.ListenAndServe(Mconfig.HTTPserver.Host+":"+Mconfig.HTTPserver.Port, r)
-	// if err != nil {
-	// 	log.Fatal("error starting http server : ", err)
-	// 	return
-	// }
-	//cnf.
+	rts.Status()
+
+	err := http.ListenAndServe(cnf.Conf.HTTPserver.Host+":"+cnf.Conf.HTTPserver.Port, rts.R)
+	if err != nil {
+		log.Fatal("Error starting http server : ", err)
+		return
+	}
+
 }
