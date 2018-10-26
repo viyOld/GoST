@@ -17,9 +17,12 @@ func init() {
 
 	R.Use(middleware.RequestID)
 	R.Use(middleware.RealIP)
+	R.Use(middleware.DefaultCompress)
 
 	R.Get("/", handlers.StartPage)
-	R.Get("/start", handlers.StartPage)
+	R.Get("/login", handlers.LoginPage)
+
+	// static files
 	R.Handle("/assets/images/*", http.StripPrefix("/assets/images/", http.FileServer(http.Dir("./assets/images/"))))
 	R.Handle("/assets/css/*", http.StripPrefix("/assets/css/", http.FileServer(http.Dir("./assets/css/"))))
 	R.Handle("/assets/js/*", http.StripPrefix("/assets/js/", http.FileServer(http.Dir("./assets/js/"))))
