@@ -21,6 +21,7 @@ func init() {
 
 	R.Get("/", handlers.StartPage)
 	R.Get("/login", handlers.LoginPage)
+	R.Post("/login", handlers.PostLogin)
 
 	// static files
 	R.Handle("/assets/images/*", http.StripPrefix("/assets/images/", http.FileServer(http.Dir("./assets/images/"))))

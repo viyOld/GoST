@@ -41,3 +41,16 @@ func LoginPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+//PostLogin POST Login
+func PostLogin(w http.ResponseWriter, r *http.Request) {
+	log.Println("Login POST Login")
+	r.ParseForm()
+	nik := r.FormValue("username")
+	password := r.FormValue("password")
+	log.Println("Nik = ", nik)
+	log.Println("Password = ", password)
+	//fmt.Println("Пользователь:", r.Form["username"])
+	//fmt.Println("Пароль:", r.Form["password"])
+	http.Redirect(w, r, "/", 301)
+}
